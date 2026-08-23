@@ -92,6 +92,6 @@ model Category {
   clerkId     String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  description String?   // Added description field
+  description String?   // Added description fieldd
   products    Product[]
 }
