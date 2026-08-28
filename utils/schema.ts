@@ -1,112 +1,123 @@
 import * as zod from "zod";
 
-//Input form Schema
-export const productSchema = zod.object({
-
-    name: zod.string().min(4,
-        {
-            message: "Name must be at least 4 characters long"
-        }
-
-    ).max(30,
-        {
-            message: "Name must be at most 10 characters long"
-        }
-    ),
-
-
-    description: zod.string().refine((description) => {
-        const wordCount = description.split(" ").length;
-        return wordCount >= 10 && wordCount <= 500;
-    },
-        {
-            message: "Description must be at between 10 and 500 words"
-        }
-    ),
-
-    price: zod.coerce.number().int().min(0,
-        {
-            message: "Price must be a positive number ."
-        }
-    ),
-
-    featured: zod.coerce.boolean().default(false),
-
-    categoryId: zod.string().min(1, {
-        message: "Please select a category"
-    }),
-})
-
-//## validation of form data input
-
-//T = Generic        Generic means input dynamic user can type string or number or any others types
+// ─────────────────────────────────────────────
+// Generic validator (same pattern as Food-Menu)
+// ─────────────────────────────────────────────
 export function validateFuctionSchema<T>(schema: zod.ZodSchema<T>, data: unknown): T {
-    // export function validateFuctionSchema(schema:any, data: unknown) { method 222
-    const result = schema.safeParse(data)
-    if (!result.success) {
-        const error = result.error.issues.map((e: any) => e.message);
-        throw new Error(error.join(', '));
-    }
-    return result.data;
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const errors = result.error.issues ? result.error.issues.map((e) => e.message) : (result.error as any).errors?.map((e: any) => e.message) || [result.error.message];
+    throw new Error(errors.join(", "));
+  }
+  return result.data;
 }
 
-// +++++++ old code  change it to fuction  validateFuctionSchema    +++++  I used this code direct in action.ts
-// const validateData =  productSchema.safeParse(rowData);
-// if(!validateData.success){
-//   const error = validateData.error.issues.map((e)=>e.message);
-//   throw new Error(error.join(', '));
-// }   
+// ─────────────────────────────────────────────
+// Auth Schemas
+// ─────────────────────────────────────────────
+export const loginSchema = zod.object({
+  email: zod.string().email({ message: "Invalid email address" }),
+  password: zod.string().min(6, { message: "Password must be at least 6 characters" }),
+});
 
+export const registerSchema = zod.object({
+  name: zod.string().min(2, { message: "Name must be at least 2 characters" }),
+  email: zod.string().email({ message: "Invalid email address" }),
+  password: zod.string().min(6, { message: "Password must be at least 6 characters" }),
+  role: zod.enum(["ADMIN", "RECEPTIONIST", "DOCTOR"], {
+    message: "Please select a valid role",
+  }),
+});
 
-function validateImageFile() {
-    const imageSize = 1024 * 1024;
-    const acceptedFileType = ['image/']
+// ─────────────────────────────────────────────
+// Department
+// ─────────────────────────────────────────────
+export const departmentSchema = zod.object({
+  name: zod.string().min(2, { message: "Department name must be at least 2 characters" }),
+  description: zod.string().optional(),
+});
 
-    return zod.instanceof(File).refine((file) => {
-        return !file || file.size <= imageSize
-    }, 'File size must be less than 1 MB')
+// ─────────────────────────────────────────────
+// Doctor
+// ─────────────────────────────────────────────
+export const doctorSchema = zod.object({
+  name: zod.string().min(2, { message: "Name must be at least 2 characters" }),
+  email: zod.string().email({ message: "Invalid email address" }),
+  password: zod.string().min(6, { message: "Password must be at least 6 characters" }),
+  specialization: zod.string().min(2, { message: "Specialization is required" }),
+  departmentId: zod.string().min(1, { message: "Please select a department" }),
+});
 
-        .refine((file) => { //refine means custom validation
-            return !file || acceptedFileType.some((type) => file.type.startsWith(type));
-        }, 'File  must be an image')
-}
-//imageSchema
-export const imageSchema = zod.object({
-    image: validateImageFile()
-})
+// ─────────────────────────────────────────────
+// Patient
+// ─────────────────────────────────────────────
+export const patientSchema = zod.object({
+  fullName: zod.string().min(2, { message: "Full name must be at least 2 characters" }),
+  gender: zod.enum(["MALE", "FEMALE"], { message: "Please select a gender" }),
+  dateOfBirth: zod.string().min(1, { message: "Date of birth is required" }),
+  phone: zod.string().min(7, { message: "Phone number must be at least 7 digits" }),
+  address: zod.string().optional(),
+  bloodType: zod.string().optional(),
+});
 
+// ─────────────────────────────────────────────
+// Appointment
+// ─────────────────────────────────────────────
+export const appointmentSchema = zod.object({
+  patientId: zod.string().min(1, { message: "Please select a patient" }),
+  doctorId: zod.string().min(1, { message: "Please select a doctor" }),
+  departmentId: zod.string().min(1, { message: "Please select a department" }),
+  scheduledAt: zod.string().min(1, { message: "Scheduled date/time is required" }),
+  reason: zod.string().optional(),
+});
 
-//Review
-export const reviewSchema = zod.object({
-    rating: zod.coerce.number()
-        .min(1, 'Rating must be at least 1')
-        .max(5, 'Rating must be at most 5'),
+// ─────────────────────────────────────────────
+// Consultation
+// ─────────────────────────────────────────────
+export const consultationSchema = zod.object({
+  appointmentId: zod.string().min(1, { message: "Appointment is required" }),
+  patientId: zod.string().min(1, { message: "Patient is required" }),
+  doctorId: zod.string().min(1, { message: "Doctor is required" }),
+  diagnosis: zod.string().optional(),
+  notes: zod.string().optional(),
+});
 
-    comment: zod.string()
-        .min(10, 'Comment must be at least 10 characters long')
-        .max(100, 'Comment must be at most 100 characters long'),
+// ─────────────────────────────────────────────
+// Admission
+// ─────────────────────────────────────────────
+export const admissionSchema = zod.object({
+  patientId: zod.string().min(1, { message: "Please select a patient" }),
+  doctorId: zod.string().min(1, { message: "Please select a doctor" }),
+  departmentId: zod.string().min(1, { message: "Please select a department" }),
+  reason: zod.string().optional(),
+});
 
-    productId: zod.string().refine((value) => value !== '', {
-        message: "Product Id cannot be empty"
-    }),
-    authorName: zod.string().refine((value) => value !== '', {
-        message: "Author name cannot be empty"
-    }),
-    authorImageUrl: zod.string().refine((value) => value !== '', {
-        message: "Author image URL cannot be empty"
-    }),
-})
+// ─────────────────────────────────────────────
+// Medicine
+// ─────────────────────────────────────────────
+export const medicineSchema = zod.object({
+  name: zod.string().min(2, { message: "Medicine name is required" }),
+  categoryId: zod.string().min(1, { message: "Please select a category" }),
+  quantity: zod.coerce.number().int().min(0, { message: "Quantity must be 0 or more" }),
+  unit: zod.string().optional(),
+  price: zod.coerce.number().min(0, { message: "Price must be a positive number" }),
+  expiryDate: zod.string().min(1, { message: "Expiry date is required" }),
+  lowStockThreshold: zod.coerce.number().int().min(0).default(10),
+});
 
-
-
-//Category Schema
+// ─────────────────────────────────────────────
+// Medicine Category
+// ─────────────────────────────────────────────
 export const categorySchema = zod.object({
-    title: zod.string().min(2, {
-        message: "Title must be at least 2 characters long"
-    }).max(50, {
-        message: "Title must be at most 50 characters long"
-    }),
-    description: zod.string().trim().max(300, {
-        message: "Description must be at most 300 characters long"
-    }).optional(),
-})
+  name: zod.string().min(2, { message: "Category name is required" }),
+});
+
+// ─────────────────────────────────────────────
+// Prescription Item
+// ─────────────────────────────────────────────
+export const prescriptionItemSchema = zod.object({
+  consultationId: zod.string().min(1, { message: "Consultation is required" }),
+  medicineId: zod.string().min(1, { message: "Please select a medicine" }),
+  quantity: zod.coerce.number().int().min(1, { message: "Quantity must be at least 1" }),
+  dosage: zod.string().optional(),
+});

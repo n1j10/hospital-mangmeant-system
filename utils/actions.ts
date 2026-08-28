@@ -1,769 +1,898 @@
-"use server"
+"use server";
+
 import { redirect } from "next/navigation";
-import db from "./db";
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { categorySchema, imageSchema, productSchema, reviewSchema, validateFuctionSchema } from "./schema";
-import { deleteImage, uploadImage } from "./supabase";
 import { revalidatePath } from "next/cache";
-import { links } from "./links";
-import { Cart } from "@/utils/type";
+import { cookies } from "next/headers";
+import db from "./db";
+import {
+  loginSchema,
+  registerSchema,
+  departmentSchema,
+  doctorSchema,
+  patientSchema,
+  appointmentSchema,
+  consultationSchema,
+  admissionSchema,
+  medicineSchema,
+  categorySchema,
+  prescriptionItemSchema,
+  validateFuctionSchema,
+} from "./schema";
+import { signToken, hashPassword, comparePassword, getAuthUser } from "./auth";
+import type { DashboardStats } from "./type";
 
-
-//fetch all featured products
-export const fetchFeaturedProducts = async () => {
-  const products = await db.product.findMany({
-    where: {
-      featured: true,
-    },
-  });
-  return products;
+// ─── helpers ──────────────────────────────────
+const renderError = (error: unknown): { message: string } => {
+  console.log("🔥 SERVER ACTION ERROR:", error);
+  return {
+    message: error instanceof Error ? error.message : "Unknown Error",
+  };
 };
 
+// ═══════════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════════
+export async function loginAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
+  try {
+    const rawData = Object.fromEntries(formData);
+    const validated = validateFuctionSchema(loginSchema, rawData);
+    const user = await db.user.findUnique({ where: { email: validated.email } });
+    if (!user) {
+      console.log("❌ USER NOT FOUND FOR EMAIL:", validated.email);
+      throw new Error("Invalid email or password");
+    }
+    if (!comparePassword(validated.password, user.password)) {
+      console.log("❌ PASSWORD MISMATCH FOR USER:", validated.email);
+      throw new Error("Invalid email or password");
+    }
+    const token = signToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    });
+    const cookieStore = await cookies();
+    cookieStore.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+  } catch (error) {
+    return renderError(error);
+  }
+  redirect("/admin");
+}
 
-//fetch all  products
-export async function fetchAllProducts({ search = '', categoryId }: { search?: string; categoryId?: string }) {
-  const products = await db.product.findMany({
+export async function registerAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
+  try {
+    const rawData = Object.fromEntries(formData);
+    const validated = validateFuctionSchema(registerSchema, rawData);
+    const exists = await db.user.findUnique({ where: { email: validated.email } });
+    if (exists) throw new Error("Email already registered");
+    await db.user.create({
+      data: {
+        name: validated.name,
+        email: validated.email,
+        password: hashPassword(validated.password),
+        role: validated.role as any,
+      },
+    });
+  } catch (error) {
+    return renderError(error);
+  }
+  redirect("/login");
+}
+
+export async function logoutAction() {
+  const cookieStore = await cookies();
+  cookieStore.delete("auth-token");
+  redirect("/login");
+}
+
+export async function getCurrentUser() {
+  return getAuthUser();
+}
+
+// ═══════════════════════════════════════════════
+//  DASHBOARD STATS
+// ═══════════════════════════════════════════════
+export async function fetchDashboardStats(): Promise<DashboardStats> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const [
+    totalPatients,
+    totalDoctors,
+    totalDepartments,
+    todayAppointments,
+    activeAdmissions,
+    lowStockMedicines,
+  ] = await Promise.all([
+    db.patient.count(),
+    db.doctor.count(),
+    db.department.count(),
+    db.appointment.count({
+      where: { scheduledAt: { gte: today, lt: tomorrow } },
+    }),
+    db.admission.count({ where: { status: "ADMITTED" } }),
+    db.medicine.count({
+      where: { quantity: { lte: db.medicine.fields.lowStockThreshold ? 10 : 10 } },
+    }),
+  ]);
+
+  return {
+    totalPatients,
+    totalDoctors,
+    totalDepartments,
+    todayAppointments,
+    activeAdmissions,
+    lowStockMedicines,
+  };
+}
+
+// ═══════════════════════════════════════════════
+//  DEPARTMENTS
+// ═══════════════════════════════════════════════
+export async function fetchDepartments(search?: string) {
+  const departments = await db.department.findMany({
+    where: search
+      ? { name: { contains: search, mode: "insensitive" } }
+      : undefined,
+    include: { doctors: { include: { user: true } }, _count: { select: { doctors: true, appointments: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  return departments;
+}
+
+export async function fetchSingleDepartment(id: string) {
+  const department = await db.department.findUnique({
+    where: { id },
+    include: {
+      doctors: { include: { user: true } },
+      appointments: {
+        include: { patient: true, doctor: { include: { user: true } } },
+        orderBy: { scheduledAt: "desc" },
+        take: 10,
+      },
+    },
+  });
+  if (!department) redirect("/departments");
+  return department;
+}
+
+export async function createDepartmentAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
+  try {
+    const rawData = Object.fromEntries(formData);
+    const validated = validateFuctionSchema(departmentSchema, rawData);
+    await db.department.create({ data: validated });
+    revalidatePath("/departments");
+    return { message: "Department created successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+export async function updateDepartmentAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
+  try {
+    const id = formData.get("id") as string;
+    const rawData = Object.fromEntries(formData);
+    const validated = validateFuctionSchema(departmentSchema, rawData);
+    await db.department.update({ where: { id }, data: validated });
+    revalidatePath("/departments");
+    revalidatePath(`/departments/${id}`);
+    return { message: "Department updated successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+export async function deleteDepartmentAction(
+  prevState: { departmentId: string }
+): Promise<{ message: string }> {
+  try {
+    await db.department.delete({ where: { id: prevState.departmentId } });
+    revalidatePath("/departments");
+    return { message: "Department deleted successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  DOCTORS
+// ═══════════════════════════════════════════════
+export async function fetchDoctors(search?: string) {
+  const doctors = await db.doctor.findMany({
+    where: search
+      ? {
+          OR: [
+            { user: { name: { contains: search, mode: "insensitive" } } },
+            { specialization: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : undefined,
+    include: { user: true, department: true },
+    orderBy: { createdAt: "desc" },
+  });
+  return doctors;
+}
+
+export async function fetchSingleDoctor(id: string) {
+  const doctor = await db.doctor.findUnique({
+    where: { id },
+    include: {
+      user: true,
+      department: true,
+      appointments: {
+        include: { patient: true, department: true },
+        orderBy: { scheduledAt: "desc" },
+        take: 20,
+      },
+    },
+  });
+  if (!doctor) redirect("/doctors");
+  return doctor;
+}
+
+export async function createDoctorAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
+  try {
+    const rawData = Object.fromEntries(formData);
+    const validated = validateFuctionSchema(doctorSchema, rawData);
+    const existingUser = await db.user.findUnique({ where: { email: validated.email } });
+    if (existingUser) throw new Error("Email already registered");
+    const user = await db.user.create({
+      data: {
+        name: validated.name,
+        email: validated.email,
+        password: hashPassword(validated.password),
+        role: "DOCTOR",
+      },
+    });
+    await db.doctor.create({
+      data: {
+        userId: user.id,
+        specialization: validated.specialization,
+        departmentId: validated.departmentId,
+      },
+    });
+    revalidatePath("/doctors");
+    return { message: "Doctor created successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+export async function deleteDoctorAction(
+  prevState: { doctorId: string }
+): Promise<{ message: string }> {
+  try {
+    const doctor = await db.doctor.findUnique({ where: { id: prevState.doctorId } });
+    if (!doctor) throw new Error("Doctor not found");
+    await db.doctor.delete({ where: { id: prevState.doctorId } });
+    await db.user.delete({ where: { id: doctor.userId } });
+    revalidatePath("/doctors");
+    return { message: "Doctor deleted successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  PATIENTS
+// ═══════════════════════════════════════════════
+export async function fetchPatients(search?: string) {
+  const patients = await db.patient.findMany({
+    where: search
+      ? {
+          OR: [
+            { fullName: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search } },
+          ],
+        }
+      : undefined,
+    orderBy: { createdAt: "desc" },
+  });
+  return patients;
+}
+
+export async function fetchSinglePatient(id: string) {
+  const patient = await db.patient.findUnique({
+    where: { id },
+    include: {
+      appointments: {
+        include: { doctor: { include: { user: true } }, department: true },
+        orderBy: { scheduledAt: "desc" },
+      },
+      consultations: {
+        include: {
+          doctor: { include: { user: true } },
+          prescriptions: { include: { medicine: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+      admissions: {
+        include: { doctor: { include: { user: true } }, department: true },
+        orderBy: { admitDate: "desc" },
+      },
+    },
+  });
+  if (!patient) redirect("/patients");
+  return patient;
+}
+
+export async function createPatientAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
+  try {
+    const rawData = Object.fromEntries(formData);
+    const validated = validateFuctionSchema(patientSchema, rawData);
+    await db.patient.create({
+      data: {
+        fullName: validated.fullName,
+        gender: validated.gender as any,
+        dateOfBirth: new Date(validated.dateOfBirth),
+        phone: validated.phone,
+        address: validated.address || null,
+        bloodType: validated.bloodType || null,
+      },
+    });
+    revalidatePath("/patients");
+    return { message: "Patient registered successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+export async function updatePatientAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
+  try {
+    const id = formData.get("id") as string;
+    const rawData = Object.fromEntries(formData);
+    const validated = validateFuctionSchema(patientSchema, rawData);
+    await db.patient.update({
+      where: { id },
+      data: {
+        fullName: validated.fullName,
+        gender: validated.gender as any,
+        dateOfBirth: new Date(validated.dateOfBirth),
+        phone: validated.phone,
+        address: validated.address || null,
+        bloodType: validated.bloodType || null,
+      },
+    });
+    revalidatePath("/patients");
+    revalidatePath(`/patients/${id}`);
+    return { message: "Patient updated successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+export async function deletePatientAction(
+  prevState: { patientId: string }
+): Promise<{ message: string }> {
+  try {
+    await db.patient.delete({ where: { id: prevState.patientId } });
+    revalidatePath("/patients");
+    return { message: "Patient deleted successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  APPOINTMENTS
+// ═══════════════════════════════════════════════
+export async function fetchAppointments({
+  search,
+  status,
+}: { search?: string; status?: string } = {}) {
+  const appointments = await db.appointment.findMany({
     where: {
-      ...(categoryId ? { categoryId } : {}),
+      ...(status && status !== "ALL" ? { status: status as any } : {}),
       ...(search
         ? {
-            name: { contains: search, mode: 'insensitive' },
+            OR: [
+              { patient: { fullName: { contains: search, mode: "insensitive" as const } } },
+              { reason: { contains: search, mode: "insensitive" as const } },
+            ],
           }
         : {}),
     },
-    orderBy: {
-      createdAt: "desc"
-    }
-  })
-  return products;
-}
-
-
-//find product
-
-export async function fetchSingleProduct(productID: string) {
-  const product = await db.product.findUnique({
-    where: {
-      id: productID
-    },
     include: {
-      category: true
-    }
-  });
-  if (!product) {
-    redirect('/products')
-  }
-
-  return product
-}
-
-const getAuthUser = async () => {
-  const { userId } = await auth();
-
-  if (!userId) {
-    return redirect("/")
-  }
-
-  const user = await currentUser();
-  if (!user) {
-    return redirect("/")
-  }
-  return user;
-}
-
-const renderError = (error: unknown): { message: string } => { //check error mesage 
-  return {
-    message: error instanceof Error ? error.message : "Unknown Error"
-  }
-}
-
-// fuc connect with zod to make validate to info
-export async function createProductAction(prevState: any, formData: FormData): Promise<{ message: string }> {
-  const user = await getAuthUser();
-  try {
-    const rowData = Object.fromEntries(formData); // validate for all form input without image
-    const fileImage = formData.get('image') as File;
-
-    const validatedFields = validateFuctionSchema(productSchema, rowData)
-    const validateImage = validateFuctionSchema(imageSchema, { image: fileImage })
-
-    const categoryTitle = validatedFields.categoryId;
-    const category = await db.category.findUnique({ where: { title: categoryTitle } });
-    if (!category) throw new Error("Category not found");
-    validatedFields.categoryId = category.id;
-
-    const fullImagePath = await uploadImage(validateImage.image);
-
-
-    await db.product.create({
-      data: {
-        ...validatedFields,
-        image: fullImagePath,
-        clerkId: user.id,
-      }
-    });
-    return { message: 'Product Created' }
-
-  } catch (error) {
-    return renderError(error);
-
-  }
-};
-
-//AdminUser
-const getAdminUser = async () => {
-  const user = await getAuthUser();
-  if (user.id !== process.env.ADMIN_USER_ID) redirect('/');
-  return user;
-};
-
-//fetch admin posts
-export const fetchAdminPosts = async () => {
-  await getAdminUser();
-  const user = await getAuthUser();
-  const products = await db.product.findMany({
-    where: {
-      clerkId: user.id
+      patient: true,
+      doctor: { include: { user: true } },
+      department: true,
     },
-    orderBy: {
-      createdAt: "desc"
-    }
-  })
-  return products;
+    orderBy: { scheduledAt: "desc" },
+  });
+  return appointments;
 }
 
-
-
-export const deleteProductAction = async (prevState: { productId: string }) => {
-
-  const { productId } = prevState
-
-  await getAdminUser();
-
-  try {
-    const product = await db.product.delete({
-      where: {
-        id: productId,
+export async function fetchSingleAppointment(id: string) {
+  const appointment = await db.appointment.findUnique({
+    where: { id },
+    include: {
+      patient: true,
+      doctor: { include: { user: true } },
+      department: true,
+      consultation: {
+        include: { prescriptions: { include: { medicine: true } } },
       },
-    });
-    await deleteImage(product.image);
-    // revalidatePath('/admin/products');
+    },
+  });
+  if (!appointment) redirect("/appointments");
+  return appointment;
+}
 
-    return { message: 'product removed' };
-
-
-  } catch (error) {
-    return renderError(error);
-  }
-
-};
-
-//edie product = update text data only 
-export const updateProductAction = async (prevState: any, formData: FormData) => {
-
-  await getAdminUser();
+export async function createAppointmentAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
   try {
-    const productId = formData.get('id') as string;
-
     const rawData = Object.fromEntries(formData);
-
-    const validateData = validateFuctionSchema(productSchema, rawData);
-
-    const categoryTitle = validateData.categoryId;
-    const category = await db.category.findUnique({ where: { title: categoryTitle } });
-    if (!category) throw new Error("Category not found");
-    validateData.categoryId = category.id;
-
-    await db.product.update({
-      where: {
-        id: productId,
-      },
+    const validated = validateFuctionSchema(appointmentSchema, rawData);
+    await db.appointment.create({
       data: {
-        ...validateData,
+        patientId: validated.patientId,
+        doctorId: validated.doctorId,
+        departmentId: validated.departmentId,
+        scheduledAt: new Date(validated.scheduledAt),
+        reason: validated.reason || null,
       },
     });
-
-    revalidatePath(`${links.AdminProducts.href}/${productId}/edit`);
-
-    return { message: 'Product updated successfully' };
+    revalidatePath("/appointments");
+    return { message: "Appointment created successfully" };
   } catch (error) {
     return renderError(error);
   }
-};
+}
 
-
-
-//image update action 
-export const updateProductImageAction = async (prevState: any, formData: FormData) => {
-
-  await getAuthUser();
+export async function updateAppointmentStatusAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
   try {
-    const image = formData.get('image') as File;
-    const productId = formData.get('id') as string;
-    const oldImageUrl = formData.get('url') as string;
-
-    const validateImageFile = validateFuctionSchema(imageSchema, { image });
-
-    const fullImagePath = await uploadImage(validateImageFile.image);
-
-    await deleteImage(oldImageUrl);
-    await db.product.update({
-      where: {
-        id: productId,
-      },
-      data: {
-        image: fullImagePath,
-      }
+    const id = formData.get("id") as string;
+    const status = formData.get("status") as string;
+    await db.appointment.update({
+      where: { id },
+      data: { status: status as any },
     });
-
-    revalidatePath(`${links.AdminProducts.href}/${productId}/edit`);
-
-    return { message: 'Image updated successfully' };
-
+    revalidatePath("/appointments");
+    revalidatePath(`/appointments/${id}`);
+    return { message: `Appointment ${status.toLowerCase()} successfully` };
   } catch (error) {
     return renderError(error);
   }
-};
-
-
-// fetch faveroit 
-
-export const fetchFavoritID = async (productID: string) => {
-  const { userId } = await auth();
-  if (!userId) return null;
-  const fav = await db.favorite.findFirst({
-
-    where: {
-      productId: productID,
-      clerkId: userId,
-    },
-    select: {
-      id: true,
-    },
-  });
-  return fav?.id || null;
 }
 
-
-type toggleFavActionProps = {
-  productID: string;
-  FavoriteID: string | null;
-}
-//fetch add or Favorite using button
-export const toggleFavAction = async (prevState: toggleFavActionProps) => {
-  const user = await getAuthUser();
-
-  const { productID, FavoriteID } = prevState;
+export async function deleteAppointmentAction(
+  prevState: { appointmentId: string }
+): Promise<{ message: string }> {
   try {
-    if (FavoriteID) {
-      await db.favorite.delete({
-        where: {
-          id: FavoriteID,
+    await db.appointment.delete({ where: { id: prevState.appointmentId } });
+    revalidatePath("/appointments");
+    return { message: "Appointment deleted successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  CONSULTATIONS
+// ═══════════════════════════════════════════════
+export async function fetchConsultations(search?: string) {
+  const consultations = await db.consultation.findMany({
+    where: search
+      ? {
+          OR: [
+            { patient: { fullName: { contains: search, mode: "insensitive" } } },
+            { diagnosis: { contains: search, mode: "insensitive" } },
+          ],
         }
-      })
-    }
-    else {
-      await db.favorite.create({
-        data: {
-          productId: productID,
-          clerkId: user.id,
-        }
-      })
-    }
-    revalidatePath("");
-
-    return { message: FavoriteID ? 'removed from favorite' : 'added to favorite' };
-
-  } catch (error) {
-    return renderError(error);
-  }
+      : undefined,
+    include: {
+      patient: true,
+      doctor: { include: { user: true } },
+      appointment: true,
+      prescriptions: { include: { medicine: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return consultations;
 }
 
-
-// user -> product -> fav
-export const fetchUserFav = async () => {
-  const user = await getAuthUser();
-  const fav = await db.favorite.findMany({
-    where: {
-      clerkId: user.id,
-    },
+export async function fetchSingleConsultation(id: string) {
+  const consultation = await db.consultation.findUnique({
+    where: { id },
     include: {
-      product: true,
+      patient: true,
+      doctor: { include: { user: true } },
+      appointment: true,
+      prescriptions: { include: { medicine: true } },
     },
   });
-  return fav;
+  if (!consultation) redirect("/consultations");
+  return consultation;
 }
 
-//Reviews
-export const creatReviewAction = async (prevState: any, formData: FormData) => {
-  const user = await getAuthUser();
+export async function createConsultationAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
   try {
     const rawData = Object.fromEntries(formData);
-    // console.log(rawData,'input form info++++');
-    const validatedFields = reviewSchema.safeParse(rawData);
-
-    if (!validatedFields.success) {
-      const errors = validatedFields.error?.issues.map((error) => error.message)
-
-      return { message: "Error" + errors?.join(",") };
-    }
-
-    await db.review.create({
+    const validated = validateFuctionSchema(consultationSchema, rawData);
+    await db.consultation.create({
       data: {
-        ...validatedFields.data,
-        clerkId: user.id,
+        appointmentId: validated.appointmentId,
+        patientId: validated.patientId,
+        doctorId: validated.doctorId,
+        diagnosis: validated.diagnosis || null,
+        notes: validated.notes || null,
       },
     });
-
-    revalidatePath(`/products/${validatedFields.data.productId}`);
-    return { message: 'review submitted successfully' };
+    // Also mark appointment as completed
+    await db.appointment.update({
+      where: { id: validated.appointmentId },
+      data: { status: "COMPLETED" },
+    });
+    revalidatePath("/consultations");
+    revalidatePath("/appointments");
+    return { message: "Consultation created successfully" };
   } catch (error) {
     return renderError(error);
   }
 }
 
-
-
-export const fetchProductReview = async (productId: string) => {
-  // const user = await getAuthUser();
-
-  const review = await db.review.findMany({
+// ═══════════════════════════════════════════════
+//  ADMISSIONS
+// ═══════════════════════════════════════════════
+export async function fetchAdmissions({
+  search,
+  status,
+}: { search?: string; status?: string } = {}) {
+  const admissions = await db.admission.findMany({
     where: {
-      productId: productId
-    },
-    orderBy: {
-      createdAt: 'desc'
-    },
-  })
-  return review;
-};
-
-export const fetchAllReviews = async () => {
-  return db.review.findMany({
-    include: {
-      product: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-};
-
-
-
-// ================= Cart Actions =================
-
-export const fetchCartItems = async () => {
-  const { userId } = await auth();
-  if (!userId) return 0;
-  const cart = await db.cart.findFirst({
-    where: {
-      clerkId: userId,
-    },
-    select: {
-      numItemsInCart: true,
-    },
-  });
-  return cart?.numItemsInCart || 0;
-};
-
-const includeProductClause = {
-  cartItems: {
-    include: {
-      product: true,
-    },
-  },
-};
-
-export const fetchOrCreateCart = async ({ userId, errorOnFailure = false, }: { userId: string; errorOnFailure?: boolean; }) => {
-  let cart = await db.cart.findFirst({
-    where: {
-      clerkId: userId,
-    },
-    include: includeProductClause,
-  });
-  if (!cart && errorOnFailure) {
-    throw new Error("Cart not found");
-  }
-  if (!cart) {
-    cart = await db.cart.create({
-      data: {
-        clerkId: userId,
-      },
-      include: includeProductClause,
-    });
-  }
-  return cart;
-};
-
-const updateOrCreateCartItem = async ({ productId, cartId, amount, }: { productId: string; cartId: string; amount: number; }) => {
-  let cartItem = await db.cartItem.findFirst({
-    where: {
-      productId,
-      cartId,
-    },
-  });
-  if (cartItem) {
-    cartItem = await db.cartItem.update({
-      where: {
-        id: cartItem.id,
-      },
-      data: {
-        amount: cartItem.amount + amount,
-      },
-    });
-  } else {
-    cartItem = await db.cartItem.create({
-      data: { amount, productId, cartId },
-    });
-  }
-};
-
-export const updateCart = async (cart: Cart) => {
-
-  const cartItems = await db.cartItem.findMany({
-    where: {
-      cartId: cart.id,
+      ...(status && status !== "ALL" ? { status: status as any } : {}),
+      ...(search
+        ? { patient: { fullName: { contains: search, mode: "insensitive" as const } } }
+        : {}),
     },
     include: {
-      product: true,
+      patient: true,
+      doctor: { include: { user: true } },
+      department: true,
     },
-    orderBy: {
-      createdAt: "asc",
-    },
+    orderBy: { admitDate: "desc" },
   });
-
-  let numItemsInCart = 0;
-  let cartTotal = 0;
-
-  for (const item of cartItems) {
-    numItemsInCart += item.amount;
-    cartTotal += item.amount * item.product.price;
-  }
-  const orderTotal = cartTotal;
-
-  const currentCart = await db.cart.update({
-    where: {
-      id: cart.id,
-    },
-    data: {
-      numItemsInCart,
-      orderTotal,
-      cartTotal,
-
-    },
-    include: includeProductClause,
-  });
-  return { cartItems, currentCart };
-};
-
-
-
-export const addToCartAction = async (prevState: any, formData: FormData) => {
-  const user = await getAuthUser();
-  try {
-    const productId = formData.get("productId") as string;
-    const amount = Number(formData.get("amount"));
-    await fetchSingleProduct(productId);
-    const cart = await fetchOrCreateCart({ userId: user.id });
-    await updateOrCreateCartItem({ productId, cartId: cart.id, amount });
-    await updateCart(cart);
-  } catch (error) {
-    return renderError(error);
-  }
-  redirect("/cart");
-};
-
-
-
-export const removeCartItemAction = async (prevState: any, formData: FormData,) => {
-  const user = await getAuthUser();
-  try {
-    const cartItemId = formData.get("id") as string;
-    const cart = await fetchOrCreateCart({ userId: user.id, errorOnFailure: true, });
-
-    await db.cartItem.delete({
-      where: {
-        id: cartItemId,
-        cartId: cart.id,
-      },
-    });
-    await updateCart(cart);
-    revalidatePath("/cart");
-    return { message: "Item removed from cart" };
-  } catch (error) {
-    return renderError(error);
-  }
-};
-
-export const updateCartItemAction = async ({
-  amount,
-  cartItemId,
-}: {
-  amount: number;
-  cartItemId: string;
-}) => {
-  const user = await getAuthUser();
-  try {
-    const cart = await fetchOrCreateCart({
-      userId: user.id,
-      errorOnFailure: true,
-    });
-
-    await db.cartItem.update({
-      where: {
-        id: cartItemId,
-        cartId: cart.id,
-      },
-      data: {
-        amount,
-      },
-    });
-    await updateCart(cart);
-    revalidatePath("/cart");
-    return { message: "cart updated" };
-  } catch (error) {
-    return renderError(error);
-  }
-};
-
-
-// ================= Orders Actions =================
-export const createOrderAction = async (prevState: any, formData: FormData) => {
-  const user = await getAuthUser();
-
-  try {
-    const productIdFromForm = formData.get("productId") as string | null;
-
-    if (productIdFromForm) {
-      const product = await db.product.findUnique({
-        where: { id: productIdFromForm },
-      });
-      if (!product) {
-        throw new Error("Product not found");
-      }
-
-      await db.order.create({
-        data: {
-          clerkId: user.id,
-          productId: product.id,
-          products: 1,
-          orderTotal: product.price,
-        },
-      });
-    } else {
-      const cart = await fetchOrCreateCart({
-        userId: user.id,
-        errorOnFailure: true,
-      });
-
-      if (!cart.cartItems.length) {
-        throw new Error("Cart is empty");
-      }
-
-      await db.order.createMany({
-        data: cart.cartItems.map((item) => ({
-          clerkId: user.id,
-          productId: item.productId,
-          products: item.amount,
-          orderTotal: item.amount * item.product.price,
-        })),
-      });
-
-      await db.cart.delete({
-        where: { id: cart.id },
-      });
-    }
-  } catch (error) {
-    return renderError(error);
-  }
-
-  redirect("/orders");
-};
-
-
-
-export const fetchUserOrders = async () => {
-  const user = await getAuthUser();
-  const orders = await db.order.findMany({
-    where: { clerkId: user.id },
-    include: {
-      product: {
-        select: { name: true },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-  return orders;
-};
-
-export const fetchAdminOrders = async () => {
-  await getAdminUser();
-
-  const orders = await db.order.findMany({
-    include: {
-      product: {
-        select: { name: true },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-  return orders;
-};
-
-
-// ================= Categories Actions =================
-
-// Fetch all categories 
-export const fetchAllCategories = async () => {
-  const categories = await db.category.findMany({
-        include: { products: true },
-    orderBy: {
-      title: "asc",
-    },
-  });
-  return categories;
-};
-
-// Fetch admin categories
-export const fetchAdminCategories = async () => {
-  await getAdminUser();
-  const categories = await db.category.findMany({
-
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-  return categories;
-};
-
-export async function createCategoryAction(prevState: any, formData: FormData): Promise<{ message: string }> {
-  const user = await getAdminUser();
-  try {
-    const rowData = Object.fromEntries(formData); // validate for all form input without image
-    const fileImage = formData.get('image') as File;
-
-    const validatedFields = validateFuctionSchema(categorySchema, rowData)
-    const validateImage = validateFuctionSchema(imageSchema, { image: fileImage })
-
-    const fullImagePath = await uploadImage(validateImage.image);
-
-
-    await db.category.create({
-      data: {
-        ...validatedFields,
-        image: fullImagePath,
-        clerkId: user.id,
-      }
-    });
-    revalidatePath('/admin/categories');
-    revalidatePath('/products');
-    return { message: 'Category Created successfully' };
-  } catch (error) {
-    return renderError(error);
-
-  }
-};
-// Fetch Single category
-export async function fetchSingleCategory(categoryId: string) {
-  const category = await db.category.findUnique({
-    where: { id: categoryId },
-  });
-    if (!category) {
-    redirect('/categories')
-  }
-  return category;
+  return admissions;
 }
 
+export async function fetchSingleAdmission(id: string) {
+  const admission = await db.admission.findUnique({
+    where: { id },
+    include: {
+      patient: true,
+      doctor: { include: { user: true } },
+      department: true,
+    },
+  });
+  if (!admission) redirect("/admissions");
+  return admission;
+}
 
-// Delete category action with image removal from Supabase
-export const deleteCategoryAction = async (prevState: { categoryId: string }) => {
-  const { categoryId } = prevState;
-  await getAdminUser();
-
+export async function createAdmissionAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
   try {
-    const category = await db.category.delete({
-      where: {
-        id: categoryId,
-      },
-    });
-    if (category.image) {
-      await deleteImage(category.image);
-    }
-    revalidatePath('/admin/categories');
-    revalidatePath('/products');
-    return { message: 'Category removed successfully' };
-  } catch (error) {
-    return renderError(error);
-  }
-};
-
-// Update category action
-export const updateCategoryAction = async (prevState: any, formData: FormData) => {
-  await getAdminUser();
-  try {
-    const categoryId = formData.get('id') as string;
     const rawData = Object.fromEntries(formData);
-    const validateData = validateFuctionSchema(categorySchema, rawData);
-
-    await db.category.update({
-      where: {
-        id: categoryId,
-      },
+    const validated = validateFuctionSchema(admissionSchema, rawData);
+    await db.admission.create({
       data: {
-        title: validateData.title,
-        description: validateData.description || null,
+        patientId: validated.patientId,
+        doctorId: validated.doctorId,
+        departmentId: validated.departmentId,
+        reason: validated.reason || null,
       },
     });
-
-    revalidatePath('/admin/categories');
-    revalidatePath('/products');
-    return { message: 'Category updated successfully' };
+    revalidatePath("/admissions");
+    return { message: "Patient admitted successfully" };
   } catch (error) {
     return renderError(error);
   }
-};
+}
 
-
-//image update action 
-export const updateCategoryImageAction = async (prevState: any, formData: FormData) => {
-
-  await getAdminUser();
+export async function dischargePatientAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
   try {
-    const image = formData.get('image') as File;
-    const categoryId = formData.get('id') as string;
-    const oldImageUrl = formData.get('url') as string;
-
-    const validateImageFile = validateFuctionSchema(imageSchema, { image });
-
-    const fullImagePath = await uploadImage(validateImageFile.image);
-
-    await deleteImage(oldImageUrl);
-    await db.category.update({
-      where: {
-        id: categoryId,
-      },
-      data: {
-        image: fullImagePath,
-      }
+    const id = formData.get("id") as string;
+    await db.admission.update({
+      where: { id },
+      data: { status: "DISCHARGED", dischargeDate: new Date() },
     });
-
-    revalidatePath(`${links.AdminCategories.href}/${categoryId}/edit`);
-
-    return { message: 'Image updated successfully' };
-
+    revalidatePath("/admissions");
+    revalidatePath(`/admissions/${id}`);
+    return { message: "Patient discharged successfully" };
   } catch (error) {
     return renderError(error);
   }
-};
+}
 
+// ═══════════════════════════════════════════════
+//  PHARMACY — Categories
+// ═══════════════════════════════════════════════
+export async function fetchCategories() {
+  return db.medicineCategory.findMany({
+    include: { _count: { select: { medicines: true } } },
+    orderBy: { name: "asc" },
+  });
+}
 
+export async function createCategoryAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
+  try {
+    const rawData = Object.fromEntries(formData);
+    const validated = validateFuctionSchema(categorySchema, rawData);
+    await db.medicineCategory.create({ data: validated });
+    revalidatePath("/pharmacy/categories");
+    return { message: "Category created successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+export async function deleteCategoryAction(
+  prevState: { categoryId: string }
+): Promise<{ message: string }> {
+  try {
+    await db.medicineCategory.delete({ where: { id: prevState.categoryId } });
+    revalidatePath("/pharmacy/categories");
+    return { message: "Category deleted successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  PHARMACY — Medicines
+// ═══════════════════════════════════════════════
+export async function fetchMedicines({
+  search,
+  categoryId,
+}: { search?: string; categoryId?: string } = {}) {
+  return db.medicine.findMany({
+    where: {
+      ...(categoryId ? { categoryId } : {}),
+      ...(search
+        ? { name: { contains: search, mode: "insensitive" as const } }
+        : {}),
+    },
+    include: { category: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function fetchSingleMedicine(id: string) {
+  const medicine = await db.medicine.findUnique({
+    where: { id },
+    include: { category: true },
+  });
+  if (!medicine) redirect("/pharmacy");
+  return medicine;
+}
+
+export async function fetchLowStockMedicines() {
+  const medicines = await db.medicine.findMany({
+    include: { category: true },
+    orderBy: { quantity: "asc" },
+  });
+  // Filter in JS since Prisma doesn't support field-to-field comparisons easily
+  return medicines.filter((m) => m.quantity <= m.lowStockThreshold);
+}
+
+export async function fetchExpiringMedicines() {
+  const thirtyDaysFromNow = new Date();
+  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+  return db.medicine.findMany({
+    where: { expiryDate: { lte: thirtyDaysFromNow } },
+    include: { category: true },
+    orderBy: { expiryDate: "asc" },
+  });
+}
+
+export async function createMedicineAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
+  try {
+    const rawData = Object.fromEntries(formData);
+    const validated = validateFuctionSchema(medicineSchema, rawData);
+    await db.medicine.create({
+      data: {
+        name: validated.name,
+        categoryId: validated.categoryId,
+        quantity: validated.quantity,
+        unit: validated.unit || null,
+        price: validated.price,
+        expiryDate: new Date(validated.expiryDate),
+        lowStockThreshold: validated.lowStockThreshold,
+      },
+    });
+    revalidatePath("/pharmacy");
+    return { message: "Medicine added successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+export async function updateMedicineAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
+  try {
+    const id = formData.get("id") as string;
+    const rawData = Object.fromEntries(formData);
+    const validated = validateFuctionSchema(medicineSchema, rawData);
+    await db.medicine.update({
+      where: { id },
+      data: {
+        name: validated.name,
+        categoryId: validated.categoryId,
+        quantity: validated.quantity,
+        unit: validated.unit || null,
+        price: validated.price,
+        expiryDate: new Date(validated.expiryDate),
+        lowStockThreshold: validated.lowStockThreshold,
+      },
+    });
+    revalidatePath("/pharmacy");
+    return { message: "Medicine updated successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+export async function deleteMedicineAction(
+  prevState: { medicineId: string }
+): Promise<{ message: string }> {
+  try {
+    await db.medicine.delete({ where: { id: prevState.medicineId } });
+    revalidatePath("/pharmacy");
+    return { message: "Medicine deleted successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  PRESCRIPTIONS
+// ═══════════════════════════════════════════════
+export async function addPrescriptionItemAction(
+  prevState: any,
+  formData: FormData
+): Promise<{ message: string }> {
+  try {
+    const rawData = Object.fromEntries(formData);
+    const validated = validateFuctionSchema(prescriptionItemSchema, rawData);
+    await db.prescriptionItem.create({ data: validated });
+    revalidatePath(`/consultations/${validated.consultationId}`);
+    return { message: "Prescription item added" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+export async function removePrescriptionItemAction(
+  prevState: { itemId: string; consultationId: string }
+): Promise<{ message: string }> {
+  try {
+    await db.prescriptionItem.delete({ where: { id: prevState.itemId } });
+    revalidatePath(`/consultations/${prevState.consultationId}`);
+    return { message: "Prescription item removed" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  USERS (admin)
+// ═══════════════════════════════════════════════
+export async function fetchUsers() {
+  return db.user.findMany({
+    include: { doctor: { include: { department: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function deleteUserAction(
+  prevState: { userId: string }
+): Promise<{ message: string }> {
+  try {
+    await db.user.delete({ where: { id: prevState.userId } });
+    revalidatePath("/admin/users");
+    return { message: "User deleted successfully" };
+  } catch (error) {
+    return renderError(error);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  RECENT ITEMS (for dashboard)
+// ═══════════════════════════════════════════════
+export async function fetchRecentAppointments() {
+  return db.appointment.findMany({
+    include: {
+      patient: true,
+      doctor: { include: { user: true } },
+      department: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+  });
+}
+
+// Fetch all doctors (for dropdowns)
+export async function fetchAllDoctorsForSelect() {
+  return db.doctor.findMany({
+    include: { user: true, department: true },
+    orderBy: { user: { name: "asc" } },
+  });
+}
+
+// Fetch all patients (for dropdowns)
+export async function fetchAllPatientsForSelect() {
+  return db.patient.findMany({
+    orderBy: { fullName: "asc" },
+  });
+}
+
+// Fetch all departments (for dropdowns)
+export async function fetchAllDepartmentsForSelect() {
+  return db.department.findMany({
+    orderBy: { name: "asc" },
+  });
+}
+
+// Fetch completed appointments without consultation (for creating consultations)
+export async function fetchCompletedAppointmentsWithoutConsultation() {
+  return db.appointment.findMany({
+    where: {
+      status: "COMPLETED",
+      consultation: null,
+    },
+    include: {
+      patient: true,
+      doctor: { include: { user: true } },
+    },
+    orderBy: { scheduledAt: "desc" },
+  });
+}

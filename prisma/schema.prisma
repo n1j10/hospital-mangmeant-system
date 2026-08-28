@@ -1,7 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// prisma/schema.prisma
 
 datasource db {
   provider = "postgresql"
@@ -12,86 +9,214 @@ generator client {
   output   = "../lib/generated/prisma"
 }
 
-model Product {
-  id          String     @id @default(uuid())
-  name        String
-  description String
-  featured    Boolean
-  image       String
-  price       Int
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  clerkId     String
-  favorites   Favorite[]
-  reviews     Review[]
-  cartItems   CartItem[]
-  categoryId  String?
-  category    Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  orders      Order[]
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  RECEPTIONIST
+  DOCTOR
 }
 
-model Favorite {
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum AdmissionStatus {
+  ADMITTED
+  DISCHARGED
+}
+
+// ─────────────────────────────────────────────
+// (auth) + admin/users → accounts & roles
+// ─────────────────────────────────────────────
+
+model User {
   id        String   @id @default(cuid())
-  clerkId   String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId String
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  doctor Doctor? // present only when role = DOCTOR
+
+  @@map("users")
 }
 
-model Review {
+// ─────────────────────────────────────────────
+// departments/
+// ─────────────────────────────────────────────
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  doctors      Doctor[]
+  appointments Appointment[]
+  admissions   Admission[]
+
+  @@map("departments")
+}
+
+// ─────────────────────────────────────────────
+// doctors/
+// ─────────────────────────────────────────────
+
+model Doctor {
   id             String   @id @default(cuid())
-  clerkId        String
-  rating         Int
-  comment        String
-  authorName     String
-  authorImageUrl String
+  userId         String   @unique
+  specialization String
+  departmentId   String
   createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId      String
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department    Department     @relation(fields: [departmentId], references: [id])
+  appointments  Appointment[]
+  consultations Consultation[]
+  admissions    Admission[]
+
+  @@map("doctors")
 }
 
-model Cart {
-  id             String     @id @default(uuid())
-  clerkId        String
-  cartItems      CartItem[]
-  numItemsInCart Int        @default(0)
-  cartTotal      Int        @default(0)
-  orderTotal     Int        @default(0)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+// ─────────────────────────────────────────────
+// patients/
+// ─────────────────────────────────────────────
+
+model Patient {
+  id          String   @id @default(cuid())
+  fullName    String
+  gender      Gender
+  dateOfBirth DateTime
+  phone       String
+  address     String?
+  bloodType   String?
+  createdAt   DateTime @default(now())
+
+  appointments  Appointment[]
+  consultations Consultation[]
+  admissions    Admission[]
+
+  @@map("patients")
 }
 
-model CartItem {
-  id        String   @id @default(uuid())
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId String
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  cartId    String
-  amount    Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ─────────────────────────────────────────────
+// appointments/
+// ─────────────────────────────────────────────
+
+model Appointment {
+  id           String            @id @default(cuid())
+  patientId    String
+  doctorId     String
+  departmentId String
+  scheduledAt  DateTime
+  status       AppointmentStatus @default(PENDING)
+  reason       String?
+  createdAt    DateTime          @default(now())
+
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor       Doctor        @relation(fields: [doctorId], references: [id])
+  department   Department    @relation(fields: [departmentId], references: [id])
+  consultation Consultation?
+
+  @@map("appointments")
 }
 
-model Order {
-  id         String   @id @default(uuid())
-  clerkId    String
-  products   Int      @default(0)
-  orderTotal Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  productId  String
+// ─────────────────────────────────────────────
+// consultations/
+// ─────────────────────────────────────────────
+
+model Consultation {
+  id            String   @id @default(cuid())
+  appointmentId String   @unique
+  patientId     String
+  doctorId      String
+  diagnosis     String?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  appointment   Appointment        @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patient       Patient            @relation(fields: [patientId], references: [id])
+  doctor        Doctor             @relation(fields: [doctorId], references: [id])
+  prescriptions PrescriptionItem[]
+
+  @@map("consultations")
 }
 
-model Category {
-  id          String    @id @default(uuid())
-  title       String    @unique
-  image       String
-  clerkId     String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  description String?   // Added description fieldd
-  products    Product[]
+// ─────────────────────────────────────────────
+// admissions/
+// ─────────────────────────────────────────────
+
+model Admission {
+  id            String          @id @default(cuid())
+  patientId     String
+  doctorId      String
+  departmentId  String
+  admitDate     DateTime        @default(now())
+  dischargeDate DateTime?
+  status        AdmissionStatus @default(ADMITTED)
+  reason        String?
+
+  patient    Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor     Doctor     @relation(fields: [doctorId], references: [id])
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@map("admissions")
+}
+
+// ─────────────────────────────────────────────
+// pharmacy/ (Medicine)
+// ─────────────────────────────────────────────
+
+model MedicineCategory {
+  id   String @id @default(cuid())
+  name String @unique
+
+  medicines Medicine[]
+
+  @@map("medicine_categories")
+}
+
+model Medicine {
+  id                String   @id @default(cuid())
+  name              String
+  categoryId        String
+  quantity          Int      @default(0)
+  unit              String? // e.g. box, strip, bottle
+  price             Decimal  @db.Decimal(10, 2)
+  expiryDate        DateTime
+  lowStockThreshold Int      @default(10)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  category      MedicineCategory   @relation(fields: [categoryId], references: [id])
+  prescriptions PrescriptionItem[]
+
+  @@map("medicines")
+}
+
+// links a consultation to the medicines prescribed in it
+model PrescriptionItem {
+  id             String  @id @default(cuid())
+  consultationId String
+  medicineId     String
+  quantity       Int
+  dosage         String? // e.g. "1 tablet twice daily"
+
+  consultation Consultation @relation(fields: [consultationId], references: [id], onDelete: Cascade)
+  medicine     Medicine     @relation(fields: [medicineId], references: [id])
+
+  @@map("prescription_items")
 }

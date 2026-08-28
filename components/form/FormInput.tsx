@@ -1,31 +1,36 @@
-import React from 'react'
-import { Label } from '../ui/label';
-import { Input } from '../ui/input';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-interface FormInputProps {
-    name: string;
-    type: string;
-    label?: string;
-    defaultValue?: string;
-    placeholder?: string;
-};
-
-function FormInput({ name, type, label, defaultValue, placeholder }: FormInputProps) {
-    return (
-        <div className='mb-2'>
-            <Label htmlFor={name} className='capitalize mb-2'>
-                {label || name}
-            </Label>
-            <Input
-                id={name}
-                name={name}
-                type={type}
-                defaultValue={defaultValue}
-                placeholder={placeholder}
-                required
-            />
-        </div>
-    )
+function FormInput({
+  name,
+  label,
+  type = "text",
+  defaultValue = "",
+  placeholder,
+  required = false,
+}: {
+  name: string;
+  label: string;
+  type?: string;
+  defaultValue?: string;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={name} className="text-sm font-medium">
+        {label}
+      </Label>
+      <Input
+        id={name}
+        name={name}
+        type={type}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        required={required}
+      />
+    </div>
+  );
 }
 
-export default FormInput
+export default FormInput;

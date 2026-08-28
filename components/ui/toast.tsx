@@ -217,9 +217,6 @@ function Toaster({
 const createToastManager = ToastPrimitive.createToastManager
 const useToastManager = ToastPrimitive.useToastManager
 
-export type ToastProps = React.ComponentProps<typeof Toast>
-export type ToastActionElement = React.ReactElement<typeof ToastAction>
-
 export {
   Toaster,
   Toast,

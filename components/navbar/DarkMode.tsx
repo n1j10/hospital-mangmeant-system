@@ -1,34 +1,36 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from 'react'
-import { Button } from "@/components/ui/button"
-import { MoonIcon, SunIcon } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 
-function DarkMode() {
-  const { resolvedTheme, setTheme } = useTheme();
+export default function DarkMode() {
+  const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
-  const isDark = resolvedTheme === 'dark';
+  if (!mounted) {
+    return (
+      <Button variant="ghost" size="icon" className="h-9 w-9">
+        <Sun className="h-[18px] w-[18px]" />
+      </Button>
+    );
+  }
 
   return (
     <Button
-      type="button"
-      variant="outline"
+      variant="ghost"
       size="icon"
-      aria-label="Toggle theme"
-      disabled={!mounted}
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
-  
+      className="h-9 w-9"
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
     >
-      <SunIcon className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      <MoonIcon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+      {theme === "dark" ? (
+        <Sun className="h-[18px] w-[18px] text-amber-400" />
+      ) : (
+        <Moon className="h-[18px] w-[18px]" />
+      )}
     </Button>
-  )
+  );
 }
-
-export default DarkMode

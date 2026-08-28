@@ -1,51 +1,37 @@
 import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { cn } from "@/lib/utils";
-import Navbar from "@/components/navbar/Navbar";
-import { ThemeProvider } from "@/components/theme-provider"
-import Container from "@/components/global/Container";
-import { Toaster } from "@/components/ui/sonner";
-import { ClerkProvider } from '@clerk/nextjs'
-import DarkMode from "@/components/navbar/DarkMode";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "sonner";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: "E store",
-  description: "E store build with next js",
+  title: "MediCare — Hospital Management System",
+  description:
+    "Comprehensive hospital management system for managing patients, doctors, appointments, pharmacy, and more.",
 };
 
-export default function BaseLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html suppressHydrationWarning>
-      <body>
-        <ClerkProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <Navbar />
-
-            <Container className="pt-15 ">
-              {children}
-              <div className="fixed flex justify-end  items-end 
-               lg:bottom-10 lg:right-80 
-             
-              size-10 "> 
-                <DarkMode />
-              </div>
-            </Container>
-
-            <Toaster />
-
-          </ThemeProvider>
-        </ClerkProvider>
-
-
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider>
+          {children}
+          <Toaster richColors position="top-right" />
+        </ThemeProvider>
       </body>
     </html>
   );
