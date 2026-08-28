@@ -36,7 +36,7 @@ export default async function PatientDetailPage({
       {/* Profile Card */}
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex flex-wrap items-start gap-8">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-2xl font-bold shrink-0">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-2xl font-bold shrink-0 shadow-md shadow-purple-500/20">
             {patient.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 flex-1">
@@ -74,7 +74,7 @@ export default async function PatientDetailPage({
           </div>
           <div className="shrink-0">
             <Link href={`/appointments/create?patientId=${patient.id}`}>
-              <Button size="sm" className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white">
+              <Button size="sm" className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md shadow-purple-500/20">
                 Book Appointment
               </Button>
             </Link>
@@ -113,7 +113,7 @@ export default async function PatientDetailPage({
                 {patient.appointments.map((apt) => (
                   <TableRow key={apt.id}>
                     <TableCell className="font-medium">
-                      <Link href={`/appointments/${apt.id}`} className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                      <Link href={`/appointments/${apt.id}`} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
                         {apt.doctor.user.name}
                       </Link>
                     </TableCell>
@@ -147,7 +147,7 @@ export default async function PatientDetailPage({
                 {patient.consultations.map((con) => (
                   <TableRow key={con.id}>
                     <TableCell className="font-medium">
-                      <Link href={`/consultations/${con.id}`} className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                      <Link href={`/consultations/${con.id}`} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
                         {con.doctor.user.name}
                       </Link>
                     </TableCell>

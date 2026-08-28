@@ -42,7 +42,7 @@ function RecentAppointments({
               <TableCell className="font-medium">
                 <Link
                   href={`/patients/${apt.patientId}`}
-                  className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+                  className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                 >
                   {apt.patient.fullName}
                 </Link>

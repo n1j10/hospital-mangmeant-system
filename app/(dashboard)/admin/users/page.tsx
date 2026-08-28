@@ -7,9 +7,9 @@ import DeleteButton from "@/components/global/DeleteButton";
 import { formatDate } from "@/utils/format";
 
 const roleColors: Record<string, string> = {
-  ADMIN: "bg-violet-500/15 text-violet-700 border-violet-500/25 dark:text-violet-400",
-  DOCTOR: "bg-teal-500/15 text-teal-700 border-teal-500/25 dark:text-teal-400",
-  RECEPTIONIST: "bg-blue-500/15 text-blue-700 border-blue-500/25 dark:text-blue-400",
+  ADMIN: "bg-purple-500/15 text-purple-700 border-purple-500/25 dark:text-purple-400",
+  DOCTOR: "bg-blue-500/15 text-blue-700 border-blue-500/25 dark:text-blue-400",
+  RECEPTIONIST: "bg-indigo-500/15 text-indigo-700 border-indigo-500/25 dark:text-indigo-400",
 };
 
 export default async function UsersPage() {
@@ -41,7 +41,7 @@ export default async function UsersPage() {
               <TableRow key={user.id} className="hover:bg-muted/50">
                 <TableCell className="font-medium">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-xs font-semibold shrink-0">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-xs font-semibold shrink-0 shadow-xs">
                       {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                     </div>
                     {user.name}

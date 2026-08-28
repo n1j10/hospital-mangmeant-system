@@ -26,7 +26,7 @@ export default async function DoctorsPage({
           <p className="text-sm text-muted-foreground mt-1">{doctors.length} doctors registered</p>
         </div>
         <Link href="/doctors/create">
-          <Button className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white">
+          <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md shadow-purple-500/20">
             <Plus className="h-4 w-4 mr-1" />
             Add Doctor
           </Button>
@@ -42,16 +42,16 @@ export default async function DoctorsPage({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {doctors.map((doctor) => (
-            <Card key={doctor.id} className="group hover:shadow-md hover:shadow-teal-500/5 transition-all duration-200">
+            <Card key={doctor.id} className="group hover:shadow-md hover:shadow-purple-500/10 transition-all duration-200">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-sm font-semibold">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-sm font-semibold shadow-xs">
                       {doctor.user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
                     </div>
                     <div>
                       <CardTitle className="text-base">
-                        <Link href={`/doctors/${doctor.id}`} className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                        <Link href={`/doctors/${doctor.id}`} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
                           {doctor.user.name}
                         </Link>
                       </CardTitle>
@@ -67,7 +67,7 @@ export default async function DoctorsPage({
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="secondary">{doctor.specialization}</Badge>
-                  <Badge variant="outline" className="text-teal-700 dark:text-teal-400 border-teal-500/25">
+                  <Badge variant="outline" className="text-purple-700 dark:text-purple-400 border-purple-500/25">
                     {doctor.department.name}
                   </Badge>
                 </div>

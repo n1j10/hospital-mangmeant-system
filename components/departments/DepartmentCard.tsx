@@ -17,18 +17,18 @@ export default function DepartmentCard({
   department: DepartmentWithCounts;
 }) {
   return (
-    <Card className="group hover:shadow-md hover:shadow-teal-500/5 transition-all duration-200 border-border">
+    <Card className="group hover:shadow-md hover:shadow-purple-500/10 transition-all duration-200 border-border">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-gradient-to-br from-teal-500/10 to-cyan-500/10 p-2.5">
-              <Building2 className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+            <div className="rounded-lg bg-gradient-to-br from-purple-500/15 to-blue-500/15 p-2.5 border border-purple-500/20">
+              <Building2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
               <CardTitle className="text-base">
                 <Link
                   href={`/departments/${department.id}`}
-                  className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+                  className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                 >
                   {department.name}
                 </Link>

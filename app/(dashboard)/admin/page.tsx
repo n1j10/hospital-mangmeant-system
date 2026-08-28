@@ -24,7 +24,7 @@ export default async function AdminDashboardPage() {
         </div>
         <div className="flex gap-2">
           <Link href="/patients/register">
-            <Button size="sm" className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white">
+            <Button size="sm" className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md shadow-purple-500/20">
               <Plus className="h-4 w-4 mr-1" />
               New Patient
             </Button>

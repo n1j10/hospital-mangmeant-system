@@ -64,7 +64,7 @@ export default async function AppointmentDetailPage({
           )}
           {appointment.status === "COMPLETED" && !appointment.consultation && (
             <Link href={`/consultations/create?appointmentId=${id}`}>
-              <Button size="sm" className="bg-gradient-to-r from-teal-500 to-cyan-600 text-white">
+              <Button size="sm" className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md shadow-purple-500/20">
                 <FileText className="h-4 w-4 mr-1" />
                 Add Consultation
               </Button>
@@ -82,7 +82,7 @@ export default async function AppointmentDetailPage({
           </div>
           <Link
             href={`/patients/${appointment.patientId}`}
-            className="font-semibold text-foreground hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+            className="font-semibold text-foreground hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
           >
             {appointment.patient.fullName}
           </Link>
@@ -95,7 +95,7 @@ export default async function AppointmentDetailPage({
           </div>
           <Link
             href={`/doctors/${appointment.doctorId}`}
-            className="font-semibold text-foreground hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+            className="font-semibold text-foreground hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
           >
             {appointment.doctor.user.name}
           </Link>
@@ -108,7 +108,7 @@ export default async function AppointmentDetailPage({
           </div>
           <Link
             href={`/departments/${appointment.departmentId}`}
-            className="font-semibold text-foreground hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+            className="font-semibold text-foreground hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
           >
             {appointment.department.name}
           </Link>
@@ -125,8 +125,8 @@ export default async function AppointmentDetailPage({
 
       {/* Linked Consultation */}
       {appointment.consultation && (
-        <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 p-5">
-          <h3 className="font-semibold mb-2 text-teal-700 dark:text-teal-400 flex items-center gap-2">
+        <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-5">
+          <h3 className="font-semibold mb-2 text-purple-700 dark:text-purple-400 flex items-center gap-2">
             <FileText className="h-4 w-4" />
             Consultation Record
           </h3>

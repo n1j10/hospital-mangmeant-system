@@ -24,7 +24,7 @@ export default async function DoctorDetailPage({ params }: { params: Promise<{ i
       {/* Profile Card */}
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="flex items-center gap-6">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-xl font-bold">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white text-xl font-bold shadow-md shadow-purple-500/20">
             {doctor.user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
           </div>
           <div className="space-y-2">
@@ -45,7 +45,7 @@ export default async function DoctorDetailPage({ params }: { params: Promise<{ i
       <div className="rounded-xl border border-border bg-card">
         <div className="p-6 pb-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            <CalendarClock className="h-5 w-5 text-teal-600 dark:text-teal-400" /> Appointments
+            <CalendarClock className="h-5 w-5 text-purple-600 dark:text-purple-400" /> Appointments
           </h3>
         </div>
         <Table>
@@ -61,7 +61,7 @@ export default async function DoctorDetailPage({ params }: { params: Promise<{ i
             {doctor.appointments.map((apt) => (
               <TableRow key={apt.id}>
                 <TableCell className="font-medium">
-                  <Link href={`/patients/${apt.patient.id}`} className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">{apt.patient.fullName}</Link>
+                  <Link href={`/patients/${apt.patient.id}`} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">{apt.patient.fullName}</Link>
                 </TableCell>
                 <TableCell>{apt.department.name}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{formatDateTime(apt.scheduledAt)}</TableCell>

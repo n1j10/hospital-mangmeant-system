@@ -38,7 +38,7 @@ export default async function DepartmentDetailPage({
         <div className="p-6 pb-4 flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Stethoscope className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+              <Stethoscope className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               Doctors
             </h3>
             <p className="text-sm text-muted-foreground">
@@ -60,7 +60,7 @@ export default async function DepartmentDetailPage({
                 <TableCell className="font-medium">
                   <Link
                     href={`/doctors/${doctor.id}`}
-                    className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+                    className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                   >
                     {doctor.user.name}
                   </Link>
@@ -86,7 +86,7 @@ export default async function DepartmentDetailPage({
       <div className="rounded-xl border border-border bg-card">
         <div className="p-6 pb-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            <CalendarClock className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+            <CalendarClock className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             Recent Appointments
           </h3>
         </div>

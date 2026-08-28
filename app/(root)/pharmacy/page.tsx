@@ -49,7 +49,7 @@ export default async function PharmacyPage({
             </Button>
           </Link>
           <Link href="/pharmacy/add">
-            <Button className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white">
+            <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md shadow-purple-500/20">
               <Plus className="h-4 w-4 mr-1" />
               Add Medicine
             </Button>
@@ -64,7 +64,7 @@ export default async function PharmacyPage({
         <div className="flex flex-wrap gap-2">
           <Link
             href="/pharmacy"
-            className={`inline-flex h-9 items-center rounded-lg border px-3 text-xs font-medium transition-colors ${!categoryId ? "bg-teal-500 text-white border-teal-500" : "border-border text-muted-foreground hover:bg-accent"
+            className={`inline-flex h-9 items-center rounded-lg border px-3 text-xs font-medium transition-colors ${!categoryId ? "bg-purple-600 text-white border-purple-600 shadow-xs" : "border-border text-muted-foreground hover:bg-accent"
               }`}
           >
             All
@@ -73,7 +73,7 @@ export default async function PharmacyPage({
             <Link
               key={cat.id}
               href={`/pharmacy?categoryId=${cat.id}`}
-              className={`inline-flex h-9 items-center rounded-lg border px-3 text-xs font-medium transition-colors ${categoryId === cat.id ? "bg-teal-500 text-white border-teal-500" : "border-border text-muted-foreground hover:bg-accent"
+              className={`inline-flex h-9 items-center rounded-lg border px-3 text-xs font-medium transition-colors ${categoryId === cat.id ? "bg-purple-600 text-white border-purple-600 shadow-xs" : "border-border text-muted-foreground hover:bg-accent"
                 }`}
             >
               {cat.name}

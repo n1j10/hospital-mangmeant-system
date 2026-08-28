@@ -44,8 +44,8 @@ export default function Navbar({
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-[18px] w-[18px]" />
           <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
           </span>
         </Button>
 
@@ -54,7 +54,7 @@ export default function Navbar({
             render={
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9">
-                  <AvatarFallback className="bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-xs font-semibold">
+                  <AvatarFallback className="bg-gradient-to-br from-purple-600 to-blue-600 text-white text-xs font-semibold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
@@ -66,7 +66,7 @@ export default function Navbar({
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium">{user?.name || "User"}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
-                <p className="text-xs text-teal-600 dark:text-teal-400 font-medium">
+                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
                   {user?.role}
                 </p>
               </div>

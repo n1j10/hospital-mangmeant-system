@@ -31,7 +31,7 @@ export default async function AdmissionsPage({
           </p>
         </div>
         <Link href="/admissions/create">
-          <Button className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white">
+          <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md shadow-purple-500/20">
             <Plus className="h-4 w-4 mr-1" />
             Admit Patient
           </Button>
@@ -49,7 +49,7 @@ export default async function AdmissionsPage({
               href={`/admissions?status=${s}`}
               className={`inline-flex h-9 items-center rounded-lg border px-3 text-xs font-medium transition-colors ${
                 (status ?? "ALL") === s
-                  ? "bg-teal-500 text-white border-teal-500"
+                  ? "bg-purple-600 text-white border-purple-600 shadow-xs"
                   : "border-border text-muted-foreground hover:bg-accent"
               }`}
             >
@@ -79,7 +79,7 @@ export default async function AdmissionsPage({
               {admissions.map((adm) => (
                 <TableRow key={adm.id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">
-                    <Link href={`/admissions/${adm.id}`} className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                    <Link href={`/admissions/${adm.id}`} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
                       {adm.patient.fullName}
                     </Link>
                   </TableCell>

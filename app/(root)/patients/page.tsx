@@ -28,7 +28,7 @@ export default async function PatientsPage({searchParams,}: {searchParams: Promi
           </p>
         </div>
         <Link href="/patients/register">
-          <Button className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white">
+          <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md shadow-purple-500/20">
             <Plus className="h-4 w-4 mr-1" />
             Register Patient
           </Button>
@@ -61,7 +61,7 @@ export default async function PatientsPage({searchParams,}: {searchParams: Promi
                   <TableCell className="font-medium">
                     <Link
                       href={`/patients/${patient.id}`}
-                      className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+                      className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
                     >
                       {patient.fullName}
                     </Link>
@@ -76,7 +76,7 @@ export default async function PatientsPage({searchParams,}: {searchParams: Promi
                   </TableCell>
                   <TableCell>
                     {patient.bloodType ? (
-                      <Badge variant="outline" className="font-mono text-teal-700 dark:text-teal-400 border-teal-500/25">
+                      <Badge variant="outline" className="font-mono text-purple-700 dark:text-purple-400 border-purple-500/25">
                         {patient.bloodType}
                       </Badge>
                     ) : (

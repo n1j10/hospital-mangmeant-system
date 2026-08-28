@@ -29,7 +29,7 @@ export default async function ConsultationsPage({
           </p>
         </div>
         <Link href="/consultations/create">
-          <Button className="bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white">
+          <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md shadow-purple-500/20">
             <Plus className="h-4 w-4 mr-1" />
             New Consultation
           </Button>
@@ -58,7 +58,7 @@ export default async function ConsultationsPage({
               {consultations.map((con) => (
                 <TableRow key={con.id} className="hover:bg-muted/50">
                   <TableCell className="font-medium">
-                    <Link href={`/consultations/${con.id}`} className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                    <Link href={`/consultations/${con.id}`} className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
                       {con.patient.fullName}
                     </Link>
                   </TableCell>

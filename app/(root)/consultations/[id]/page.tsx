@@ -44,7 +44,7 @@ export default async function ConsultationDetailPage({
           <div className="flex items-center gap-2 text-muted-foreground mb-3">
             <User className="h-4 w-4" /><span className="text-sm font-medium">Patient</span>
           </div>
-          <Link href={`/patients/${consultation.patientId}`} className="font-semibold hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+          <Link href={`/patients/${consultation.patientId}`} className="font-semibold hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
             {consultation.patient.fullName}
           </Link>
         </div>
@@ -52,7 +52,7 @@ export default async function ConsultationDetailPage({
           <div className="flex items-center gap-2 text-muted-foreground mb-3">
             <Stethoscope className="h-4 w-4" /><span className="text-sm font-medium">Doctor</span>
           </div>
-          <Link href={`/doctors/${consultation.doctorId}`} className="font-semibold hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+          <Link href={`/doctors/${consultation.doctorId}`} className="font-semibold hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
             {consultation.doctor.user.name}
           </Link>
           <p className="text-sm text-muted-foreground mt-0.5">{consultation.doctor.specialization}</p>
@@ -62,7 +62,7 @@ export default async function ConsultationDetailPage({
       {/* Diagnosis & Notes */}
       <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <h3 className="font-semibold flex items-center gap-2">
-          <FileText className="h-4 w-4 text-teal-600 dark:text-teal-400" />Clinical Record
+          <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />Clinical Record
         </h3>
         <div>
           <p className="text-sm font-medium text-muted-foreground mb-1">Diagnosis</p>
@@ -78,7 +78,7 @@ export default async function ConsultationDetailPage({
       <div className="rounded-xl border border-border bg-card">
         <div className="p-6 pb-4">
           <h3 className="font-semibold flex items-center gap-2">
-            <Pill className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+            <Pill className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             Prescriptions ({consultation.prescriptions.length})
           </h3>
         </div>
