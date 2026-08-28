@@ -126,7 +126,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     }),
     db.admission.count({ where: { status: "ADMITTED" } }),
     db.medicine.count({
-      where: { quantity: { lte: db.medicine.fields.lowStockThreshold ? 10 : 10 } },
+      where: { quantity: { lte: db.medicine.fields.lowStockThreshold } },
     }),
   ]);
 
@@ -711,12 +711,11 @@ export async function fetchSingleMedicine(id: string) {
 }
 
 export async function fetchLowStockMedicines() {
-  const medicines = await db.medicine.findMany({
+  return db.medicine.findMany({
+    where: { quantity: { lte: db.medicine.fields.lowStockThreshold } },
     include: { category: true },
     orderBy: { quantity: "asc" },
   });
-  // Filter in JS since Prisma doesn't support field-to-field comparisons easily
-  return medicines.filter((m) => m.quantity <= m.lowStockThreshold);
 }
 
 export async function fetchExpiringMedicines() {
