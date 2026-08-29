@@ -19,7 +19,8 @@ import {
   validateFuctionSchema,
 } from "./schema";
 import { signToken, hashPassword, comparePassword, getAuthUser } from "./auth";
-import type { DashboardStats } from "./type";
+import type { DashboardStats, NavbarNotification } from "./type";
+import type { AuthPayload } from "./auth";
 
 // ─── helpers ──────────────────────────────────
 const renderError = (error: unknown): { message: string } => {
@@ -138,6 +139,73 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     activeAdmissions,
     lowStockMedicines,
   };
+}
+
+// Notifications are calculated from current operational data, so they stay
+// relevant without storing duplicate notification records.
+export async function fetchNavbarNotifications(
+  user: AuthPayload
+): Promise<NavbarNotification[]> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const thirtyDaysFromNow = new Date(today);
+  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+  const appointmentScope =
+    user.role === "DOCTOR" ? { doctor: { userId: user.userId } } : {};
+
+  const [pendingAppointments, lowStockMedicines, expiringMedicines] =
+    await Promise.all([
+      db.appointment.count({
+        where: {
+          ...appointmentScope,
+          scheduledAt: { gte: today, lt: tomorrow },
+          status: { in: ["PENDING", "CONFIRMED"] },
+        },
+      }),
+      db.medicine.count({
+        where: { quantity: { lte: db.medicine.fields.lowStockThreshold } },
+      }),
+      db.medicine.count({
+        where: { expiryDate: { gte: today, lte: thirtyDaysFromNow } },
+      }),
+    ]);
+
+  const notifications: NavbarNotification[] = [];
+
+  if (pendingAppointments > 0) {
+    notifications.push({
+      id: `appointments-${pendingAppointments}`,
+      title: `${pendingAppointments} appointment${pendingAppointments === 1 ? "" : "s"} today`,
+      description: "Review today’s pending and confirmed appointments.",
+      href: "/appointments?status=ALL",
+      type: "info",
+    });
+  }
+
+  if (lowStockMedicines > 0) {
+    notifications.push({
+      id: `low-stock-${lowStockMedicines}`,
+      title: `${lowStockMedicines} medicine${lowStockMedicines === 1 ? " needs" : "s need"} restocking`,
+      description: "Stock has reached or fallen below its safety threshold.",
+      href: "/pharmacy/low-stock",
+      type: "warning",
+    });
+  }
+
+  if (expiringMedicines > 0) {
+    notifications.push({
+      id: `expiring-${expiringMedicines}`,
+      title: `${expiringMedicines} medicine${expiringMedicines === 1 ? " expires" : "s expire"} within 30 days`,
+      description: "Check expiry dates and plan stock rotation.",
+      href: "/pharmacy/expiring",
+      type: "warning",
+    });
+  }
+
+  return notifications;
 }
 
 // ═══════════════════════════════════════════════

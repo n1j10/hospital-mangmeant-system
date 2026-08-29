@@ -70,3 +70,11 @@ export type DashboardStats = {
   activeAdmissions: number;
   lowStockMedicines: number;
 };
+
+export type NavbarNotification = {
+  id: string;
+  title: string;
+  description: string;
+  href: string;
+  type: "warning" | "info" | "success";
+};

@@ -76,7 +76,7 @@ export default async function PatientsPage({searchParams,}: {searchParams: Promi
                   </TableCell>
                   <TableCell>
                     {patient.bloodType ? (
-                      <Badge variant="outline" className="font-mono text-purple-700 dark:text-purple-400 border-purple-500/25">
+                      <Badge variant="outline" className="font-mono text-red-700 dark:text-red-400 border-red-500/25">
                         {patient.bloodType}
                       </Badge>
                     ) : (
