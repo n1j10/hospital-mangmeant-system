@@ -6,7 +6,7 @@ import FormContainer from "@/components/global/FormContainer";
 import FormInput from "@/components/form/FormInput";
 import FormSelect from "@/components/form/FormSelect";
 import SubmitButton from "@/components/global/SubmitButton";
-import { registerAction } from "@/utils/actions";
+import { registerAction } from "@/utils/actions/auth";
 
 export default function RegisterPage() {
   return (

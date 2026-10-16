@@ -5,7 +5,7 @@ import { Activity } from "lucide-react";
 import FormContainer from "@/components/global/FormContainer";
 import FormInput from "@/components/form/FormInput";
 import SubmitButton from "@/components/global/SubmitButton";
-import { loginAction } from "@/utils/actions";
+import { loginAction } from "@/utils/actions/auth";
 
 export default function LoginPage() {
   return (
