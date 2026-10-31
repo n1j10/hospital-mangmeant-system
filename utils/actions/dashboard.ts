@@ -48,8 +48,11 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
 
 // Notifications are calculated from the current data (nothing is saved in DB).
 export async function fetchNavbarNotifications(
-  user: AuthPayload,
+  _clientUser?: AuthPayload,
 ): Promise<NavbarNotification[]> {
+  // Server actions are public endpoints: never trust a user object sent by the
+  // caller. Always resolve the user from the session cookie.
+  const user = await getAuthUser();
   const { start, end } = getTodayRange();
 
   // A doctor sees only his own appointments, other roles see all

@@ -7,6 +7,8 @@ import {
   signToken,
   hashPassword,
   comparePassword,
+  needsRehash,
+  SESSION_MAX_AGE_SECONDS,
   getAuthUser as getSessionUser,
 } from "../auth";
 import type { Role } from "@/lib/generated/prisma/enums";
@@ -31,6 +33,14 @@ export async function loginAction(
       throw new Error("Invalid email or password");
     }
 
+    // Transparently upgrade legacy SHA-256 hashes to salted scrypt.
+    if (needsRehash(user.password)) {
+      await db.user.update({
+        where: { id: user.id },
+        data: { password: hashPassword(data.password) },
+      });
+    }
+
     // Create a token and save it in a cookie (valid for 7 days)
     const token = signToken({
       userId: user.id,
@@ -43,7 +53,7 @@ export async function loginAction(
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: SESSION_MAX_AGE_SECONDS,
       path: "/",
     });
   } catch (error) {
@@ -64,6 +74,15 @@ export async function registerAction(
 
     const emailUsed = await db.user.findUnique({ where: { email: data.email } });
     if (emailUsed) throw new Error("Email already registered");
+
+    // Privilege escalation guard: self-registration as ADMIN is only allowed to
+    // bootstrap a fresh install. Once an admin exists, admins are created by admins.
+    if (data.role === "ADMIN") {
+      const adminExists = await db.user.count({ where: { role: "ADMIN" } });
+      if (adminExists > 0) {
+        throw new Error("Admin accounts can only be created by an existing admin");
+      }
+    }
 
     await db.user.create({
       data: {
